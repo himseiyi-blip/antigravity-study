@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>냉장고를 털어라! - AI 자취생 레시피 추천</title>
+  
+  <!-- Google Fonts 로드 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS Play CDN 로드 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Tailwind 테마 커스터마이징 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            foodOrange: {
+              50: '#fff5f1',
+              100: '#ffebe3',
+              200: '#ffd0be',
+              500: '#ff7a45',
+              600: '#e05e2b',
+              700: '#b84419',
+            },
+            foodCream: {
+              50: '#FAF8F5',
+              100: '#F3EBE1',
+              200: '#E6DCD3',
+            }
+          },
+          fontFamily: {
+            sans: ['Noto Sans KR', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+          },
+          animation: {
+            'bounce-slow': 'bounce 2.5s infinite ease-in-out',
+            'pan-shake': 'panShake 0.8s infinite ease-in-out',
+          },
+          keyframes: {
+            panShake: {
+              '0%, 100%': { transform: 'rotate(0deg) translateY(0)' },
+              '25%': { transform: 'rotate(-8deg) translateY(-3px)' },
+              '75%': { transform: 'rotate(8deg) translateY(3px)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* 스크롤바 디자인 */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: #E6DCD3;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background-color: transparent;
+    }
+  </style>
+</head>
+<body class="bg-foodCream-50 text-stone-800 min-h-screen relative overflow-x-hidden pb-12 font-sans">
+
+  <!-- 배경 그라데이션 원형 데코 -->
+  <div class="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-yellow-200/40 blur-3xl -z-10"></div>
+  <div class="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-orange-200/30 blur-3xl -z-10"></div>
+
+  <!-- 메인 앱 컨테이너 -->
+  <div class="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-8">
+    
+    <!-- 1. 헤더 & API 키 입력 섹션 -->
+    <header class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 bg-white/70 backdrop-blur-md border border-white/50 p-6 rounded-3xl shadow-md">
+      <div class="flex items-center gap-3">
+        <span class="text-4xl animate-bounce-slow">🍳</span>
+        <div>
+          <h1 class="text-3xl font-black tracking-tight bg-gradient-to-r from-foodOrange-500 to-orange-400 bg-clip-text text-transparent font-outfit">
+            냉장고를 털어라! <span class="text-lg font-bold text-stone-600 font-sans ml-1">with Gemini AI</span>
+          </h1>
+          <p class="text-sm text-stone-500 mt-0.5">내 냉장고 재료로 AI 요리사 Gemini가 즉석 레시피를 만듭니다 🍽️</p>
+        </div>
+      </div>
+
+      <!-- API 키 설정창 -->
+      <div class="bg-foodCream-100/80 p-3 rounded-2xl border border-foodCream-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-md w-full md:w-auto">
+        <div class="flex-1 flex flex-col">
+          <label for="api-key-input" class="text-xs font-bold text-stone-500 mb-1 flex justify-between items-center">
+            <span>🔑 Gemini API Key <span class="text-[10px] text-stone-400 font-normal ml-1 hidden sm:inline">(로컬 브라우저에만 보관됩니다)</span></span>
+            <a href="https://aistudio.google.com/" target="_blank" class="text-foodOrange-600 hover:underline">키 발급받기 ↗</a>
+          </label>
+          <input type="password" id="api-key-input" placeholder="API 키를 입력해 주세요 (보안 보관)" 
+            class="px-3 py-1.5 rounded-lg border border-foodCream-200 bg-white text-sm outline-none focus:border-foodOrange-500 w-full">
+        </div>
+        <button id="save-key-btn" class="sm:self-end bg-foodOrange-500 hover:bg-foodOrange-600 text-white font-bold text-sm px-4 py-2 rounded-lg transition shadow-sm">
+          저장
+        </button>
+      </div>
+    </header>
+
+    <!-- 2. 대시보드 그리드 -->
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- 좌측: 식재료 선택 패널 (7/12) -->
+      <section class="lg:col-span-7 bg-white/80 backdrop-blur-md border border-white/50 p-6 sm:p-8 rounded-3xl shadow-lg flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-extrabold flex items-center gap-2">
+            <span>🛒</span> 냉장고 재료 고르기
+          </h2>
+          <p class="text-xs text-stone-500 mt-1">집에 있는 식재료를 체크해 주세요. 다중 선택이 가능합니다.</p>
+        </div>
+
+        <!-- 검색 & 직접 추가 도구 -->
+        <div class="flex flex-col sm:flex-row gap-3 bg-foodCream-100/50 p-3 rounded-2xl border border-foodCream-100">
+          <div class="relative flex-1 flex items-center">
+            <span class="absolute left-3 text-stone-400 text-sm">🔍</span>
+            <input type="text" id="ingredient-search" placeholder="식재료 검색..." 
+              class="w-full pl-9 pr-3 py-2 rounded-xl border border-foodCream-200 bg-white text-sm outline-none focus:border-foodOrange-500">
+          </div>
+          <div class="relative flex-1.2 flex items-center gap-2">
+            <input type="text" id="custom-ingredient-input" placeholder="직접 재료 추가 (예: 베이컨)" 
+              class="w-full px-3 py-2 rounded-xl border border-foodCream-200 bg-white text-sm outline-none focus:border-foodOrange-500 pr-16">
+            <button id="add-custom-btn" class="absolute right-1.5 bg-foodOrange-500 hover:bg-foodOrange-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition">
+              추가
+            </button>
+          </div>
+        </div>
+
+        <!-- 카테고리별 재료 렌더링 영역 -->
+        <div id="categories-container" class="flex flex-col gap-6 max-h-[500px] overflow-y-auto pr-2">
+          <!-- JS에서 카테고리와 체크칩들을 동적 렌더링 -->
+        </div>
+      </section>
+
+      <!-- 우측: 내 냉장고 요약 패널 (5/12) -->
+      <section class="lg:col-span-5 bg-white/80 backdrop-blur-md border border-white/50 p-6 sm:p-8 rounded-3xl shadow-lg flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-extrabold flex items-center gap-2">
+            <span>❄️</span> 나의 냉장고 현황
+          </h2>
+          <p class="text-xs text-stone-500 mt-1">현재 선택되어 보관 중인 재료들입니다.</p>
+        </div>
+
+        <!-- 냉장고 내부 보관소 UI -->
+        <div class="flex-1 bg-stone-100 border-4 border-stone-200 rounded-2xl p-4 min-h-[350px] flex relative shadow-inner">
+          <div id="fridge-shelf" class="w-full bg-white rounded-xl p-4 flex flex-wrap align-content-start gap-2 overflow-y-auto relative">
+            
+            <!-- 비어있을 때 알림 -->
+            <div id="empty-fridge-msg" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center w-4/5">
+              <span class="text-4xl block mb-2 animate-pulse">🧊</span>
+              <p class="text-xs text-stone-500 leading-relaxed">냉장고가 비어 있습니다.<br>왼쪽에서 재료를 터치해 채워 넣으세요!</p>
+            </div>
+            
+          </div>
+          <!-- 냉장고 문 고리 데코 -->
+          <div class="absolute right-[-10px] top-[30%] w-2.5 h-28 bg-stone-400 rounded-r-lg shadow-md border-r border-stone-500"></div>
+        </div>
+
+        <!-- 액션 버튼 -->
+        <div class="flex gap-3">
+          <button id="clear-all-btn" class="flex-1 bg-white hover:bg-stone-50 border border-stone-200 text-stone-600 font-bold py-3.5 rounded-2xl transition text-sm">
+            🧹 비우기
+          </button>
+          <button id="match-recipes-btn" class="flex-[2] bg-gradient-to-r from-foodOrange-500 to-orange-400 hover:from-foodOrange-600 hover:to-orange-500 text-white font-extrabold py-3.5 rounded-2xl transition shadow-md shadow-foodOrange-500/20 text-base animate-pulse">
+            🍳 AI 레시피 매칭!
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="text-center border-t border-foodCream-200 pt-6 mt-6 text-xs text-stone-400">
+      <p>© 2026 냉장고를 털어라! - 고려대학교 중어중문학과 자취생 필수 인텔리전스 🏠</p>
+    </footer>
+  </div>
+
+  <!-- 3. 로딩 상태 오버레이 모달 -->
+  <div id="loading-overlay" class="fixed inset-0 bg-stone-900/60 backdrop-blur-md z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-11/12 text-center flex flex-col items-center gap-4 border border-white/20">
+      <div class="text-6xl animate-pan-shake select-none">🍳</div>
+      <h3 class="text-lg font-black text-stone-900">AI 요리사가 레시피 창작 중...</h3>
+      <p class="text-xs text-stone-500 leading-relaxed">
+        Gemini AI가 냉장고 속 재료 조합에 딱 맞는<br>
+        가성비 폭발 초간단 자취요리를 고민하고 있습니다.<br>잠시만 기다려주세요! (약 5~10초 소요)
+      </p>
+      <!-- 로딩 바 애니메이션 -->
+      <div class="w-full bg-stone-100 h-2 rounded-full overflow-hidden mt-2">
+        <div class="bg-gradient-to-r from-foodOrange-500 to-yellow-400 h-full rounded-full w-1/3 animate-[infinite_slide_1.5s_ease-in-out]"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 결과 모달창 -->
+  <div id="result-modal" class="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-40 flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
+    <div class="bg-white w-full max-w-3xl max-h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col relative transform scale-95 transition-transform duration-300">
+      
+      <!-- 닫기 버튼 -->
+      <button id="close-modal-btn" class="absolute top-5 right-5 text-stone-400 hover:text-foodOrange-500 text-3xl font-light transition select-none">×</button>
+
+      <!-- 모달 헤더 -->
+      <div class="bg-gradient-to-br from-foodOrange-50 to-white border-b border-foodCream-100 p-6 flex flex-col items-center text-center">
+        <span class="text-4xl mb-2">🍽️</span>
+        <h2 class="text-2xl font-black text-stone-900">Gemini의 맞춤형 레시피 도착!</h2>
+        <p class="text-xs text-stone-500 mt-1">내가 가진 재료를 우선적으로 활용한 최적의 식단 계획입니다.</p>
+      </div>
+
+      <!-- 모달 바디 (마크다운 렌더링 영역) -->
+      <div id="recipe-results-content" class="flex-1 overflow-y-auto p-6 sm:p-8 space-y-4 prose max-w-none text-stone-700 leading-relaxed">
+        <!-- JS에서 AI가 준 마크다운을 HTML로 파싱하여 로드 -->
+      </div>
+
+      <!-- 모달 푸터 -->
+      <div class="border-t border-foodCream-100 p-4 bg-foodCream-50/50 flex justify-end">
+        <button id="close-modal-footer-btn" class="bg-stone-800 hover:bg-stone-900 text-white font-bold px-6 py-2.5 rounded-xl transition text-sm">
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom CSS for Slide animation -->
+  <style>
+    @keyframes slide {
+      0% { margin-left: -33%; }
+      50% { margin-left: 100%; }
+      100% { margin-left: -33%; }
+    }
+    .animate-slide {
+      animation: slide 1.5s infinite ease-in-out;
+    }
+  </style>
+
+  <!-- 5. 핵심 스크립트 로직 -->
+  <script>
+    // 기본 식재료 목록 정의
+    const DEFAULT_INGREDIENTS = {
+      "채소 & 김치": [
+        { name: "양파", emoji: "🧅" },
+        { name: "대파", emoji: "🥬" },
+        { name: "마늘", emoji: "🧄" },
+        { name: "감자", emoji: "🥔" },
+        { name: "당근", emoji: "🥕" },
+        { name: "청양고추", emoji: "🌶️" },
+        { name: "버섯", emoji: "🍄" },
+        { name: "콩나물", emoji: "🌱" },
+        { name: "김치", emoji: "🥬" },
+        { name: "양배추", emoji: "🥬" },
+        { name: "오이", emoji: "🥒" },
+        { name: "상추", emoji: "🥬" },
+        { name: "깻잎", emoji: "🍃" },
+        { name: "토마토", emoji: "🍅" }
+      ],
+      "육류 & 가공품": [
+        { name: "삼겹살", emoji: "🥓" },
+        { name: "소고기", emoji: "🥩" },
+        { name: "닭고기", emoji: "🍗" },
+        { name: "스팸", emoji: "🥫" },
+        { name: "소시지", emoji: "🌭" },
+        { name: "베이컨", emoji: "🥓" },
+        { name: "닭가슴살", emoji: "🐔" },
+        { name: "만두", emoji: "🥟" },
+        { name: "돈가스", emoji: "🥩" }
+      ],
+      "해산물 & 통조림": [
+        { name: "참치캔", emoji: "🐟" },
+        { name: "어묵", emoji: "🍢" },
+        { name: "새우", emoji: "🍤" },
+        { name: "오징어", emoji: "🦑" },
+        { name: "김", emoji: "🍙" },
+        { name: "게맛살", emoji: "🦀" }
+      ],
+      "유제품 & 알류": [
+        { name: "계란", emoji: "🥚" },
+        { name: "치즈", emoji: "🧀" },
+        { name: "우유", emoji: "🥛" },
+        { name: "버터", emoji: "🧈" },
+        { name: "요거트", emoji: "🥛" }
+      ],
+      "곡류 & 면류": [
+        { name: "밥", emoji: "🍚" },
+        { name: "라면", emoji: "🍜" },
+        { name: "파스타면", emoji: "🍝" },
+        { name: "식빵", emoji: "🍞" },
+        { name: "떡볶이떡", emoji: "🍡" },
+        { name: "우동면", emoji: "🍜" },
+        { name: "소면", emoji: "🍜" },
+        { name: "모닝빵", emoji: "🥯" }
+      ],
+      "양념 & 소스": [
+        { name: "간장", emoji: "🧴" },
+        { name: "고추장", emoji: "🌶️" },
+        { name: "된장", emoji: "🥣" },
+        { name: "굴소스", emoji: "🧴" },
+        { name: "설탕", emoji: "🧂" },
+        { name: "소금", emoji: "🧂" },
+        { name: "다진마늘", emoji: "🧄" },
+        { name: "참기름", emoji: "🥄" },
+        { name: "케찹", emoji: "🍅" },
+        { name: "마요네즈", emoji: "🧴" },
+        { name: "고춧가루", emoji: "🌶️" },
+        { name: "식초", emoji: "🍶" },
+        { name: "불닭소스", emoji: "🌶️" },
+        { name: "올리브유", emoji: "🫗" },
+        { name: "허니머스타드", emoji: "🍯" }
+      ]
+    };
+
+    // 상태 관리 변수
+    let selectedIngredients = [];
+    let customIngredients = [];
+    let geminiApiKey = "";
+
+    // DOM 캐싱
+    const apiKeyInput = document.getElementById("api-key-input");
+    const saveKeyBtn = document.getElementById("save-key-btn");
+    const categoriesContainer = document.getElementById("categories-container");
+    const fridgeShelf = document.getElementById("fridge-shelf");
+    const emptyFridgeMsg = document.getElementById("empty-fridge-msg");
+    const ingredientSearchInput = document.getElementById("ingredient-search");
+    const customIngredientInput = document.getElementById("custom-ingredient-input");
+    const addCustomBtn = document.getElementById("add-custom-btn");
+    const clearAllBtn = document.getElementById("clear-all-btn");
+    const matchRecipesBtn = document.getElementById("match-recipes-btn");
+    
+    // 모달 DOM 캐싱
+    const loadingOverlay = document.getElementById("loading-overlay");
+    const resultModal = document.getElementById("result-modal");
+    const recipeResultsContent = document.getElementById("recipe-results-content");
+    const closeModalBtn = document.getElementById("close-modal-btn");
+    const closeModalFooterBtn = document.getElementById("close-modal-footer-btn");
+
+    // 앱 시작 시 호출되는 초기화 함수
+    function init() {
+      loadState();
+      renderCategories();
+      renderFridge();
+      setupEventListeners();
+    }
+
+    // 로컬 저장소 데이터 로드
+    function loadState() {
+      const savedSelected = localStorage.getItem("selectedIngredients");
+      const savedCustom = localStorage.getItem("customIngredients");
+      const savedApiKey = localStorage.getItem("gemini_api_key");
+
+      if (savedSelected) selectedIngredients = JSON.parse(savedSelected);
+      if (savedCustom) customIngredients = JSON.parse(savedCustom);
+      if (savedApiKey) {
+        geminiApiKey = savedApiKey;
+        apiKeyInput.value = geminiApiKey;
+        // 키가 있으면 시각적으로 저장 완료 표시
+        saveKeyBtn.innerText = "저장됨✓";
+        saveKeyBtn.classList.replace("bg-foodOrange-500", "bg-stone-600");
+      }
+    }
+
+    // 데이터 저장
+    function saveState() {
+      localStorage.setItem("selectedIngredients", JSON.stringify(selectedIngredients));
+      localStorage.setItem("customIngredients", JSON.stringify(customIngredients));
+    }
+
+    // 카테고리 & 칩 렌더링
+    function renderCategories() {
+      categoriesContainer.innerHTML = "";
+
+      // 1) 기본 재료 렌더링
+      for (const [categoryName, items] of Object.entries(DEFAULT_INGREDIENTS)) {
+        createCategoryGroup(categoryName, items);
+      }
+
+      // 2) 커스텀 재료 렌더링 (있는 경우에만 카테고리 추가)
+      if (customIngredients.length > 0) {
+        const customItems = customIngredients.map(name => ({ name, emoji: "✨" }));
+        createCategoryGroup("내가 추가한 재료", customItems);
+      }
+    }
+
+    function createCategoryGroup(categoryName, items) {
+      const groupDiv = document.createElement("div");
+      groupDiv.className = "flex flex-col gap-2 category-group";
+
+      const title = document.createElement("h3");
+      title.className = "text-sm font-bold text-stone-400 border-b border-foodCream-100 pb-1 flex items-center gap-1.5";
+      title.innerText = categoryName;
+      groupDiv.appendChild(title);
+
+      const grid = document.createElement("div");
+      grid.className = "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2";
+
+      items.forEach(item => {
+        const isActive = selectedIngredients.includes(item.name);
+        const chip = document.createElement("button");
+        chip.dataset.name = item.name;
+        chip.className = `ingredient-chip flex items-center justify-center gap-1 px-3 py-2 text-xs rounded-full border transition cursor-pointer select-none
+          ${isActive 
+            ? 'bg-foodOrange-100 border-foodOrange-500 text-foodOrange-600 font-bold shadow-sm' 
+            : 'bg-white border-stone-200 hover:border-foodOrange-500 text-stone-600'}`;
+        
+        chip.innerHTML = `<span>${item.emoji}</span> <span>${item.name}</span>`;
+        chip.addEventListener("click", () => toggleIngredient(item.name));
+        grid.appendChild(chip);
+      });
+
+      groupDiv.appendChild(grid);
+      categoriesContainer.appendChild(groupDiv);
+    }
+
+    // 재료 선택/해제 토글
+    function toggleIngredient(name) {
+      const idx = selectedIngredients.indexOf(name);
+      if (idx > -1) {
+        selectedIngredients.splice(idx, 1);
+      } else {
+        selectedIngredients.push(name);
+      }
+      saveState();
+      renderCategories();
+      renderFridge();
+    }
+
+    // 냉장고 선반 렌더링
+    function renderFridge() {
+      // 기존 뱃지들 제거
+      const badges = fridgeShelf.querySelectorAll(".selected-badge");
+      badges.forEach(b => b.remove());
+
+      if (selectedIngredients.length === 0) {
+        emptyFridgeMsg.style.display = "block";
+      } else {
+        emptyFridgeMsg.style.display = "none";
+
+        selectedIngredients.forEach(name => {
+          let emoji = "✨";
+          // 기본 재료에서 이모지 서칭
+          for (const group of Object.values(DEFAULT_INGREDIENTS)) {
+            const found = group.find(item => item.name === name);
+            if (found) {
+              emoji = found.emoji;
+              break;
+            }
+          }
+
+          const badge = document.createElement("span");
+          badge.className = "selected-badge flex items-center gap-1.5 bg-foodCream-100 border border-foodCream-200 text-stone-700 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm animate-[scaleUp_0.15s_ease-out]";
+          badge.innerHTML = `
+            <span>${emoji} ${name}</span>
+            <button class="remove-btn hover:text-foodOrange-500 font-bold ml-1 text-stone-400 select-none" data-name="${name}">×</button>
+          `;
+
+          badge.querySelector(".remove-btn").addEventListener("click", (e) => {
+            const targetName = e.target.dataset.name;
+            toggleIngredient(targetName);
+          });
+
+          fridgeShelf.appendChild(badge);
+        });
+      }
+    }
+
+    // 직접 입력 재료 추가
+    function addCustomIngredient() {
+      const value = customIngredientInput.value.trim();
+      if (!value) return;
+
+      // 이미 기본 목록에 존재하는지 여부 판단
+      let isDefault = false;
+      for (const group of Object.values(DEFAULT_INGREDIENTS)) {
+        if (group.some(i => i.name === value)) {
+          isDefault = true;
+          break;
+        }
+      }
+
+      if (isDefault) {
+        if (!selectedIngredients.includes(value)) {
+          selectedIngredients.push(value);
+        }
+      } else {
+        if (!customIngredients.includes(value)) {
+          customIngredients.push(value);
+        }
+        if (!selectedIngredients.includes(value)) {
+          selectedIngredients.push(value);
+        }
+      }
+
+      customIngredientInput.value = "";
+      saveState();
+      renderCategories();
+      renderFridge();
+    }
+
+    // 재료 실시간 검색 기능
+    function filterIngredients() {
+      const query = ingredientSearchInput.value.toLowerCase().trim();
+      const groups = categoriesContainer.querySelectorAll(".category-group");
+
+      groups.forEach(group => {
+        let visibleCount = 0;
+        const chips = group.querySelectorAll(".ingredient-chip");
+        
+        chips.forEach(chip => {
+          const name = chip.dataset.name.toLowerCase();
+          if (name.includes(query)) {
+            chip.style.display = "flex";
+            visibleCount++;
+          } else {
+            chip.style.display = "none";
+          }
+        });
+
+        // 결과가 전혀 없는 카테고리는 그룹명 자체를 숨김
+        if (visibleCount === 0) {
+          group.style.display = "none";
+        } else {
+          group.style.display = "flex";
+        }
+      });
+    }
+
+    // 모달창 토글 유틸리티
+    function showModal(modalEl) {
+      modalEl.classList.remove("hidden");
+      setTimeout(() => {
+        modalEl.classList.add("opacity-100");
+        const content = modalEl.querySelector(".transform");
+        if (content) {
+          content.classList.remove("scale-95");
+          content.classList.add("scale-100");
+        }
+      }, 10);
+    }
+
+    function hideModal(modalEl) {
+      modalEl.classList.remove("opacity-100");
+      const content = modalEl.querySelector(".transform");
+      if (content) {
+        content.classList.remove("scale-100");
+        content.classList.add("scale-95");
+      }
+      setTimeout(() => {
+        modalEl.classList.add("hidden");
+      }, 300);
+    }
+
+    // 6. Gemini AI API 연동 핵심 로직
+    async function requestAIRecipes() {
+      if (selectedIngredients.length === 0) {
+        alert("냉장고에 넣을 재료를 먼저 선택해 주세요!");
+        return;
+      }
+      if (!geminiApiKey) {
+        alert("상단의 API Key 입력 칸에 Google AI Studio에서 발급받은 API 키를 입력하고 저장해 주세요!");
+        apiKeyInput.focus();
+        return;
+      }
+
+      // 로딩 모달 오픈
+      showModal(loadingOverlay);
+
+      // 프롬프트 작성
+      const prompt = `너는 대학가에서 자취생들을 위해 냉장고 속 남은 재료로 요리를 전문으로 해주는 친근하고 솜씨 좋은 AI 셰프야.
+      사용자가 고른 냉장고 식재료 목록은 다음과 같아: [${selectedIngredients.join(", ")}].
+      
+      이 재료들을 적극적으로 활용하고, 일반 가정이나 자취방에 흔하게 있는 기본 양념(예: 식용유, 간장, 소금, 설탕, 참기름, 다진마늘, 고춧가루, 식초 등)만을 추가적으로 사용하여 완성할 수 있는 초간단 레시피를 3가지 제안해줘. 
+      각 레시피를 제안할 때는 되도록 선택한 재료들이 어떻게 어우러지는지 친근한 말투(해요체)로 작성해 줘.
+
+      출력 결과는 반드시 아래 Markdown 가이드를 엄격하게 준수해서 작성해 줘:
+      
+      ## [요리 이모지] [요리명] (예: ## 🍳 스팸김치볶음밥)
+      - **소요 시간**: [시간]
+      - **난이도**: [매우쉬움 / 쉬움 / 보통 중 하나]
+      - **활용한 내 재료**: [사용한 선택 재료들 적기]
+      - **필요한 기본 양념**: [추가로 쓰인 기본 조미료들 적기]
+      
+      ### 📋 요리 소개
+      [이 요리가 자취생에게 왜 좋은지, 맛의 궁합이 어떤지 설명해 주는 짧은 한 두 문장]
+
+      ### 🔥 조리 순서
+      1. [단계 1]
+      2. [단계 2]
+      3. [단계 3]
+      ...
+      
+      ### 💡 자취 셰프의 꿀팁
+      - [레시피를 더 맛있게 즐길 수 있는 미세한 꿀팁이나 대체 재료 정보 적기]
+
+      --- (레시피 사이에 구별선 넣기)`;
+
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: prompt }]
+            }]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API 호출 실패 (Status: ${response.status})`);
+        }
+
+        const data = await response.json();
+        
+        // Gemini 응답 텍스트 추출
+        if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
+          const markdownText = data.candidates[0].content.parts[0].text;
+          
+          // 마크다운 파싱하여 모달에 주입
+          recipeResultsContent.innerHTML = parseMarkdown(markdownText);
+          
+          // 로딩창 닫고 결과창 열기
+          hideModal(loadingOverlay);
+          showModal(resultModal);
+        } else {
+          throw new Error("Gemini AI로부터 올바른 레시피 데이터를 받지 못했습니다.");
+        }
+
+      } catch (err) {
+        hideModal(loadingOverlay);
+        alert(`레시피를 가져오는 중에 오류가 발생했습니다: ${err.message}\nAPI 키가 올바른지 확인해 주세요.`);
+      }
+    }
+
+    // 간단하고 직관적인 Markdown ➔ HTML 변환 헬퍼 함수
+    function parseMarkdown(md) {
+      let html = md
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+      // 1. 가로선 (---)
+      html = html.replace(/^---$/gm, '<hr class="my-6 border-stone-200">');
+
+      // 2. 제목 (##, ###)
+      // ## 🍳 요리이름
+      html = html.replace(/^## (.*?)$/gm, '<h2 class="text-xl font-black text-stone-900 border-l-4 border-foodOrange-500 pl-3 mt-6 mb-3 flex items-center gap-1.5">$1</h2>');
+      // ### 📋 타이틀
+      html = html.replace(/^### (.*?)$/gm, '<h3 class="text-base font-extrabold text-foodOrange-600 mt-5 mb-2">$1</h3>');
+
+      // 3. 굵은 글씨 (**텍스트**)
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-stone-900">$1</strong>');
+
+      // 4. 순서 있는 리스트 (1. 2. 3.)
+      html = html.replace(/^\s*\d+\.\s+(.*?)$/gm, '<li class="ml-5 list-decimal text-stone-700 my-1 text-sm leading-relaxed">$1</li>');
+
+      // 5. 순서 없는 리스트 (- 혹은 *)
+      html = html.replace(/^\s*[-*]\s+(.*?)$/gm, '<li class="ml-4 list-disc text-stone-600 my-1 text-sm leading-relaxed">$1</li>');
+
+      // 6. 줄바꿈을 문단 및 <br>로 보강
+      html = html.split('\n').map(line => {
+        if (line.trim() === '') return '';
+        // 이미 HTML 태그로 치환된 라인은 그대로 리턴
+        if (line.startsWith('<h') || line.startsWith('<l') || line.startsWith('<h') || line.startsWith('<h')) return line;
+        return `<p class="my-2 text-sm text-stone-600 leading-relaxed">${line}</p>`;
+      }).join('\n');
+
+      return html;
+    }
+
+    // 이벤트 리스너들 한 곳에 정의
+    function setupEventListeners() {
+      // API 키 저장 버튼
+      saveKeyBtn.addEventListener("click", () => {
+        const keyVal = apiKeyInput.value.trim();
+        if (keyVal) {
+          geminiApiKey = keyVal;
+          localStorage.setItem("gemini_api_key", keyVal);
+          saveKeyBtn.innerText = "저장됨✓";
+          saveKeyBtn.classList.replace("bg-foodOrange-500", "bg-stone-600");
+          alert("Gemini API Key가 성공적으로 저장되었습니다!");
+        } else {
+          geminiApiKey = "";
+          localStorage.removeItem("gemini_api_key");
+          saveKeyBtn.innerText = "저장";
+          saveKeyBtn.classList.replace("bg-stone-600", "bg-foodOrange-500");
+          alert("입력창이 비어 있어 저장된 API 키를 삭제했습니다.");
+        }
+      });
+
+      // 검색어 인풋 리스너
+      ingredientSearchInput.addEventListener("input", filterIngredients);
+
+      // 직접 입력 리스너
+      addCustomBtn.addEventListener("click", addCustomIngredient);
+      customIngredientInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") addCustomIngredient();
+      });
+
+      // 냉장고 비우기 버튼
+      clearAllBtn.addEventListener("click", () => {
+        if (selectedIngredients.length === 0) return;
+        if (confirm("냉장고 속 재료를 전부 비우시겠습니까?")) {
+          selectedIngredients = [];
+          customIngredients = [];
+          saveState();
+          renderCategories();
+          renderFridge();
+        }
+      });
+
+      // 매칭 요청 버튼
+      matchRecipesBtn.addEventListener("click", requestAIRecipes);
+
+      // 모달 제어 리스너
+      closeModalBtn.addEventListener("click", () => hideModal(resultModal));
+      closeModalFooterBtn.addEventListener("click", () => hideModal(resultModal));
+
+      // 모달 바깥 배경 터치 시 닫기
+      window.addEventListener("click", (e) => {
+        if (e.target === resultModal) hideModal(resultModal);
+      });
+    }
+
+    // HTML이 준비되면 초기화 시작
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
